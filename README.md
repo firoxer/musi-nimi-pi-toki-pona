@@ -38,3 +38,8 @@ pona! ni li "bump, button, hill, mountain, nose, protuberance"
 
 tawa pona!
 ```
+
+Credits
+---
+
+The list of words is derived from the [linku.la](https://linku.la/about/jasima/) API.
