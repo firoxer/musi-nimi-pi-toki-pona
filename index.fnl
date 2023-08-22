@@ -4,14 +4,7 @@
 (fn empty-string? [s]
   (= "" (string.gsub s "%s" "")))
 
-(fn shuffle! [tbl]
-  (for [i (length tbl) 2 -1]
-    (let [j (math.random i)
-          tmp (. tbl i)]
-      (tset tbl i (. tbl j))
-      (tset tbl j tmp))))
-
-(fn take-first [n tbl]
+(fn take [n tbl]
   (local new-tbl {})
   (each [_ e (ipairs tbl) &until (= n (length new-tbl))]
     (table.insert new-tbl e))
@@ -25,9 +18,9 @@
     exists?))
 
 (fn load-words []
-  (collect [line (io.lines words-path)]
+  (icollect [line (io.lines words-path)]
     (let [(word definition) (string.match line "(.*)\t(.*)")]
-      (values word definition))))
+      {: word : definition})))
 
 (fn load-answers []
   (if (not (file-exists? answers-path))
@@ -54,24 +47,41 @@
                                       (+ 0.08 (* 0.02 (- 5 q)))))))]
     (values n* ef* i*)))
 
-(fn process-words-and-answers [words answers]
-  (let [stats (collect [word (pairs words)]
-                (values word {:last-reviewed nil
-                              :repetitions 0
-                              :easiness 2.5
-                              :interval 0}))]
-    (each [_ {: time : word : correct?} (ipairs answers)]
-      (let [{: repetitions : easiness : interval} (. stats word)
-            user-grade (if correct? 4 1)
-            (new-repetitions
-             new-easiness
-             new-interval) (supermemo2 user-grade repetitions easiness interval)
-            new-stats {:last-reviewed time
-                       :repetitions new-repetitions
-                       :easiness new-easiness
-                       :interval new-interval}]
-        (tset stats word new-stats)))
-    stats))
+(fn next-review [stats word]
+  (let [{: last-reviewed : interval} (. stats word)
+        one-day 86400
+        review-time (+ (or last-reviewed 0)
+                       (* interval one-day))]
+    next-review))
+
+(fn sort-by-review-order [words answers]
+  (local stats (collect [_ {: word : definition} (ipairs words)]
+                 (values word {: word
+                               : definition
+                               :last-reviewed nil
+                               :repetitions 0
+                               :easiness 2.5
+                               :interval 0})))
+  (each [_ {: time : word : correct?} (ipairs answers)]
+    (let [{: definition : repetitions : easiness : interval} (. stats word)
+          user-grade (if correct? 4 1)
+          (new-repetitions new-easiness new-interval) (supermemo2 user-grade
+                                                                  repetitions
+                                                                  easiness
+                                                                  interval)
+          new-stats {: word
+                     : definition
+                     :last-reviewed time
+                     :repetitions new-repetitions
+                     :easiness new-easiness
+                     :interval new-interval}]
+      (tset stats word new-stats)))
+  (local sorted [])
+  (each [_ {: last-reviewed : interval &as stat} (pairs stats)]
+    (tset stat :review-time (+ (or last-reviewed 0) (* interval 86400)))
+    (table.insert sorted stat))
+  (table.sort sorted #(< $1.review-time $2.review-time))
+  sorted)
 
 (fn record-answer [word correct?]
   (with-open [file (io.open answers-path :a)]
@@ -104,24 +114,13 @@
                      (record-answer word false)
                      (play words-due)))))))
 
-(fn due? [stats word]
-  (let [time-now (os.time)
-        {: last-reviewed : interval} (. stats word)
-        one-day 86400
-        review-time (+ (or last-reviewed 0)
-                       (* interval one-day))]
-    (< review-time time-now)))
-
 (fn init [words-per-session]
   (print "musi sitelen pi toki pona!")
   (let [all-words (load-words)
         prior-answers (load-answers)
-        stats (process-words-and-answers all-words prior-answers)
-        words-due (icollect [word definition (pairs all-words)]
-                    (when (due? stats word)
-                      {: word : definition}))]
-    (shuffle! words-due)
-    (play (take-first words-per-session words-due))
+        words-in-review-order (sort-by-review-order all-words prior-answers)
+        words-to-review (take words-per-session words-in-review-order)]
+    (play words-to-review)
     (print "\ntawa pona!")))
 
 (let [words-per-session (or (tonumber (. arg 1)) 10)]
