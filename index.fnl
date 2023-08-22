@@ -9,10 +9,10 @@
 (fn load-answers []
   (let [load! (fn []
                 (icollect [line (io.lines answers-path)]
-                  (let [(time word correct?) (string.match line "(.*)\t(.*)\t(.*)")]
+                  (let [(time word grade) (string.match line "(.*)\t(.*)\t(.*)")]
                     {:time (tonumber time)
                      :word word
-                     :correct? (= correct? "yes")})))]
+                     :grade (tonumber grade)})))]
     (case (pcall load!)
       (true answers) answers
       (false _) []))) ; Likely just a missing file
@@ -33,14 +33,13 @@
                                              (+ 0.08 (* 0.02 (- 5 grade)))))))})
 
 (fn sort-by-review-order [words answers]
-  (let [stats (accumulate [stats {}
-                           _ {: time : word : correct?} (ipairs answers)]
-                (let [word-stats (or (. stats word)
-                                     {:repetitions 0 :easiness 2.5 :interval 0})
-                      grade (if correct? 4 1)
-                      new-word-stats (supermemo2 grade word-stats)]
-                  (tset new-word-stats :last-reviewed time)
-                  (tset stats word new-word-stats)
+  (let [initial-stats (collect [word (pairs words)]
+                        (values word {:repetitions 0 :easiness 2.5 :interval 0}))
+        stats (accumulate [stats initial-stats
+                           _ {: time : word : grade} (ipairs answers)]
+                (let [word-stats (supermemo2 grade (. stats word))]
+                  (tset word-stats :last-reviewed time)
+                  (tset stats word word-stats)
                   stats))
         to-sort (icollect [word {: last-reviewed : interval} (pairs stats)]
                   {: word
@@ -54,9 +53,9 @@
 (fn empty-string? [s]
   (= "" (string.gsub s "%s" "")))
 
-(fn record-answer [word correct?]
+(fn record-answer [word grade]
   (with-open [file (io.open answers-path :a)]
-    (file:write (os.time) "\t" word "\t" (if correct? "yes" "no") "\n")))
+    (file:write (os.time) "\t" word "\t" grade "\n")))
 
 (fn play [words-due]
   (case words-due
@@ -70,7 +69,7 @@
                                       (empty-string? input) "\"%s\""
                                       :else                 "ike. ni li \"%s\"")
                                   definition))
-            (record-answer word correct?)
+            (record-answer word (if correct? 4 1)) ; TODO: More granular grades
             (play remaining-words-due))))))
 
 (fn take [n tbl]
