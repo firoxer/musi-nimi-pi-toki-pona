@@ -1,7 +1,7 @@
-musi-nimi-pi-toki-pona
+musi nimi pi toki pona
 ===
 
-[Spaced-repetition](https://en.wikipedia.org/wiki/Spaced_repetition) tool for learning [toki pona](https://en.wikipedia.org/wiki/Toki_Pona) words written in [Fennel](https://fennel-lang.org/)
+[Spaced-repetition](https://en.wikipedia.org/wiki/Spaced_repetition) tool for learning [Toki Pona](https://en.wikipedia.org/wiki/Toki_Pona) words written in [Fennel](https://fennel-lang.org/)
 
 Usage
 ---
@@ -38,6 +38,17 @@ pona! ni li "bump, button, hill, mountain, nose, protuberance"
 
 tawa pona!
 ```
+
+FAQ
+---
+
+>Why would you want to learn Toki Pona in the first place?
+
+Why not.
+
+>Why did you create this and not just use Anki off the shelf?
+
+I wanted to see if I could implement the algorithm myself.
 
 Credits
 ---
